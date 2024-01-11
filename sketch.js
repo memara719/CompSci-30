@@ -1,44 +1,57 @@
-//Mustafa Emara
-// Capstone proj CS30
-let movingBall;
+let Engine = Matter.Engine,
+    Render = Matter.Render,
+    World = Matter.World,
+    Bodies = Matter.Bodies;
+let engine;
+let world;
+let balls = [];
+
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  background(0, 102, 0); // green background
-  setupBalls();
-  movingBall = new Ball(width / 1.5, height / 2, 20, 2, 2); // Create a moving ball
-}
+  engine = Engine.create(); // create an engine
+  world = engine.world; // get the world from the engine
 
+  setupBalls();
+}
 function draw() {
-  background(0, 102, 0); // redraw the background to clear old frames
+  background(0, 102, 0);
   drawPoolTable();
-  drawStaticBalls();
-  movingBall.update(); // update and draw the moving ball
-  movingBall.display();
+
+  Engine.update(engine); // update the physics engine
+
+  for (let ball of balls) {
+    fill(255);
+    stroke(0);
+    strokeWeight(2);
+    ellipse(ball.position.x, ball.position.y, 20, 20); 
+  }
 }
 
 function drawPoolTable() {
-  // Drawing the table border
-  stroke(139, 69, 19);
+  stroke(139, 69, 19); // brown color for the border
   strokeWeight(20);
   noFill();
-  rect(10, 10, width - 20, height - 20);
+  rect(10, 10, width - 20, height - 20); 
 }
-
 
 function setupBalls() {
   // starting position for the triangle of balls
-  let startX = width / 4;
+  let startX = width / 1.5;
   let startY = height / 2;
-  let ballDiameter = 20; // diameter of each ball
-  let ballDistance = ballDiameter + 5; // distance between balls
+  let ballDiameter = 20; // Diameter of each ball
+  let ballDistance = ballDiameter + 5; // Distance between balls
 
-  // tri formation for balls
+  // Creating the balls in a triangle formation
   for (let row = 0; row < 5; row++) {
     for (let col = 0; col <= row; col++) {
       let x = startX + row * ballDistance;
       let y = startY - row * ballDistance / 2 + col * ballDistance;
-      drawBall(x, y, ballDiameter);
+
+      // Create a Matter.js circle body and add it to the world
+      let ball = Bodies.circle(x, y, ballDiameter / 2);
+      balls.push(ball);
+      World.add(world, ball);
     }
   }
 }
@@ -49,26 +62,3 @@ function drawBall(x, y, diameter) {
   strokeWeight(2);
   ellipse(x, y, diameter, diameter); // drawing the ball
 }
-
-class Ball {
-  constructor(x, y, diameter, vx, vy) {
-    this.x = x;
-    this.y = y;
-    this.diameter = diameter;
-    this.vx = vx; // Velocity in x direction
-    this.vy = vy; // Velocity in y direction
-  }
-
-  update() {
-    this.x += this.vx;
-    this.y += this.vy;
-    // Add boundary collision logic here
-  }
-
-  display() {
-    fill(255);
-    stroke(0);
-    strokeWeight(2);
-    ellipse(this.x, this.y, this.diameter, this.diameter);
-  }
-} 
