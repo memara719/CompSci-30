@@ -17,12 +17,18 @@ let foulOccurred = false;
 let playerFouls = [0, 0];
 let gameStarted = false;
 const MAX_SPEED = 20;
-let isNextPlayer = false; 
-
+let showNextPlayerFlag = false; 
+let backgroundMusic;
+let cueBallHitsThisTurn = 0;
 
 function setup() {
-  
+  playerFouls = [0, 0];
   createCanvas(windowWidth, windowHeight);
+  backgroundMusic = loadSound('assets/Alone with Numbers.mp3', () => {
+    backgroundMusic.setVolume(0.091);
+    backgroundMusic.loop();
+  });
+  textStyle(BOLD);
   engine = Engine.create(); 
   world = engine.world; 
   engine.world.gravity.y = 0;
@@ -46,6 +52,7 @@ function setup() {
    
       if ((pair.bodyA === cueBall && pair.bodyB === cueStick) || (pair.bodyA === cueStick && pair.bodyB === cueBall)) {
         cueBallHit = true;
+        cueBallHitsThisTurn++;
       } else if ((pair.bodyA === cueStick || pair.bodyB === cueStick) && (pair.bodyA.label === 'ball' || pair.bodyB.label === 'ball') && pair.bodyA !== cueBall && pair.bodyB !== cueBall) {
         playerFouls[currentPlayer]++;
         foulOccurred = true;
@@ -55,6 +62,7 @@ function setup() {
   });
   currentPlayer = 0;
   cueBallHit = false;
+  scoreBoard = new ScoreBoard();
 }
 
 function draw() {
@@ -83,20 +91,18 @@ function draw() {
       switchToNextPlayer();
     }
 
-    displayScores();
-    displayFoul();
     displayCurrentPlayer();
-    if (isNextPlayer) {
+    if (showNextPlayerFlag) {
       push();
-      fill(0, 102, 255, 150);  
+      fill(0, 102, 255, 150);  // Semi-transparent overlay
       rect(0, 0, width, height);
       textSize(60);
       fill(255);
       textAlign(CENTER, CENTER);
-      text("Player " + (currentPlayer + 1) + "Turn", width / 2, height / 2);
+      text("Player " + (currentPlayer + 1) + "'s Turn", width / 2, height / 2);
       pop();
     }
-    
+    scoreBoard.display();
   }
 }
 
@@ -245,88 +251,84 @@ function addMouseControl() {
 
 function drawPockets() {
   fill(0);
-  let pocketRadius = 15; // Radius of the pockets
+  let pocketRadius = 15; 
   let pocketPositions = [
-    [10, 10], [width / 2, 10], [width - 10, 10],
-    [10, height - 10], [width / 2, height - 10], [width - 10, height - 10]
+      [10, 10], [width / 2, 10], [width - 10, 10],
+      [10, height - 10], [width / 2, height - 10], [width - 10, height - 10]
   ];
-
-  pocketPositions.forEach(p => {
-    ellipse(p[0], p[1], pocketRadius * 5, pocketRadius * 5);
-    let pocket = Bodies.circle(p[0], p[1], pocketRadius, {
-      isSensor: true, // Make the pocket a sensor
-      isStatic: true,
-      label: 'pocket'
-    });
-    World.add(world, pocket);
-  });
+  for (let i = 0; i < pocketPositions.length; i++) {
+      let p = pocketPositions[i];
+      ellipse(p[0], p[1], pocketRadius * 5, pocketRadius * 5);
+      let pocket = Bodies.circle(p[0], p[1], pocketRadius, {
+          isSensor: true,
+          isStatic: true,
+          label: 'pocket'
+      });
+      World.add(world, pocket);
+  }
 }
-
 
 
 
 function handlePocketCollision(ball) {
   if (ball.label === 'ball') {
-    const ballType = ball.isStriped ? 'Striped' : 'Solid';
-    // Determine if the pocketed ball matches the player's type
-    if (playerTypes[currentPlayer] === null) {
-      playerTypes[currentPlayer] = ballType;
-      playerTypes[(currentPlayer + 1) % 2] = ballType === 'Striped' ? 'Solid' : 'Striped';
-    } else if (playerTypes[currentPlayer] !== ballType) {
-      foulOccurred = true;
-    }
+      let ballType;
+      if (ball.isStriped) {
+          ballType = 'Striped';
+      } else {
+          ballType = 'Solid';
+      }
 
-    if (!foulOccurred) {
-      playerScores[currentPlayer]++;
-    }
+      if (playerTypes[currentPlayer] === null) {
+          playerTypes[currentPlayer] = ballType;
+          if (ballType === 'Striped') {
+              playerTypes[(currentPlayer + 1) % 2] = 'Solid';
+          } else {
+              playerTypes[(currentPlayer + 1) % 2] = 'Striped';
+          }
+      } else if (playerTypes[currentPlayer] !== ballType) {
+          foulOccurred = true;
+      }
 
+      if (!foulOccurred) {
+          playerScores[currentPlayer]++;
+          scoreBoard.updateScore(currentPlayer, playerScores[currentPlayer]);
+      }
 
+      pocketedBalls.push({ number: ball.number, isStriped: ball.isStriped });
 
+      for (let i = 0; i < balls.length; i++) {
+          if (balls[i] === ball) {
+              balls.splice(i, 1);
+              break;
+          }
+      }
 
-    pocketedBalls.push({
-      number: ball.number,
-      isStriped: ball.isStriped
-    });
-    let remainingBalls = [];
-    for (let i = 0; i < balls.length; i++) {
-        if (balls[i] !== ball) {
-            remainingBalls.push(balls[i]);
-        }
-    }
-    balls = remainingBalls;
-    World.remove(world, ball); 
+      World.remove(world, ball);
   }
-}
-
-function limitSpeed(ball) {
-  const speed = Math.sqrt(ball.velocity.x ** 2 + ball.velocity.y ** 2);
-  if (speed > MAX_SPEED) {
-    const scaleFactor = MAX_SPEED / speed;
-    Matter.Body.setVelocity(ball, {
-      x: ball.velocity.x * scaleFactor,
-      y: ball.velocity.y * scaleFactor
-    });
-  }
+  cueBallHitsThisTurn = 0;
 }
 
 function displayPocketedBallsCount() {
-  textSize(20);
-  fill(255);
-  noStroke();
-  textAlign(LEFT, TOP);
+    textSize(20);
+    fill(255);
+    noStroke();
+    textAlign(LEFT, TOP);
 
-  let displayText = 'Pocketed Balls: ' + pocketedBalls.length ;
-  pocketedBalls.forEach(ball => {
-    let type;
-    if (ball.isStriped) {
-        type = 'Striped';
-    } else {
-        type = 'Solid';
+    let displayText = 'Pocketed Balls: ' + pocketedBalls.length + '\n';
+    
+    for (let i = 0; i < pocketedBalls.length; i++) {
+        let ball = pocketedBalls[i];
+        if (type === ball.isStriped) {
+          let type = 'Striped';
+        }
+        else{
+          let type ='Solid';
+        }
+        displayText += 'Ball ' + ball.number + ' (' + type + ')\n';
     }
-    displayText += "Ball " + ball.number + " (" + type + ")";
-  });
 
-  text(displayText, 30, 10);
+    text(displayText, 30, 40);
 }
 
 
@@ -335,77 +337,66 @@ function displayCurrentPlayer() {
   fill(255);
   noStroke();
   textAlign(RIGHT, TOP);
-  text('Current Player: ' + (currentPlayer + 1), width/2, 60); 
+  text('Current Player: ' + (currentPlayer + 1), width-25, 100);
 }
 
 function resetCuestick() {
   if (cueBallHit && !cueBall.isMoving) {
     switchToNextPlayer()
     cueBallHit = false;
-    foulOccurred = false;
+    
   }
 }
 
-function displayFoul() {
-  textSize(20);
-  fill(255, 0, 0);
-  text('Fouls - Player 1: ' + playerFouls[0], 800, 100);
-  text('Fouls - Player 2: ' + playerFouls[1], 800, 120);
-}
 
-function displayScores() {
-  textSize(20);
-  fill(255);
-  text('Player 1 Score: ' + playerScores[0], width-10, 30);
-  text('Player 2 Score: ' + playerScores[1], width-10, 50);
-}
-
-function checkFoulConsequences(playerIndex) {
-  if (playerFouls[playerIndex] > 5) {
-    alert('Player ' + (playerIndex + 1) + ' loses due to excessive fouls.');
-    resetGame();  
+function checkFoulConsequences() {
+  for (let i = 0; i < playerFouls.length; i++) {
+      if (playerFouls[i] >= 5) {
+          alert('Player ' + (i + 1) + ' loses due to excessive fouls. PLEASE PLAY AGAIN');
+          gameStarted = false;
+          resetGame();
+          break;
+      }
   }
 }
 
 function drawStartScreen() {
-  background(0, 102, 0);
-  fill(255);
+  
+  background(0); // black background
+  fill('palegreen'); // pale green font color
   textSize(40);
   textAlign(CENTER, CENTER);
-  text('mustafas goofy pool game', width / 2, height / 4);
+  text('mustafas pool game(goofy)', width / 2, height / 4);
 
   // Multiplayer
   fill(100, 200, 100);
   rect(width / 2 - 100, height / 2 - 25, 200, 50);
-  fill(0);
+  fill('palegreen'); 
   textSize(20);
   text('Multiplayer', width / 2, height / 2);
 
   // Singleplayer 
   fill(100, 200, 100);
   rect(width / 2 - 100, height / 2 + 75, 200, 50);
-  fill(0);
-  textSize(20);
+  fill('white'); 
   text('Computer(add later)', width / 2, height / 2 + 100);
 
   // Rules
   fill(100, 200, 200);
   rect(width / 2 - 100, height / 2 + 150, 200, 50);
-  fill(0);
-  textSize(20);
+  fill('palegreen'); 
   text('Rules', width / 2, height / 2 + 175);
 }
 
 function mousePressed() {
 
   if (!gameStarted) {
-    // Check if Multiplayer button is clicked
     if (mouseX >= width / 2 - 100 && mouseX <= width / 2 + 100 && mouseY >= height / 2 - 25 && mouseY <= height / 2 + 25) {
       gameStarted = true;
       setupGame(); 
     }
     if (mouseX >= width / 2 - 100 && mouseX <= width / 2 + 100 && mouseY >= height / 2 + 150 && mouseY <= height / 2 + 200) {
-      showRules(); 
+      showRules();
     }
   }
 }
@@ -419,7 +410,7 @@ function setupGame() {
   playerFouls = [0, 0];
   foulOccurred = false;
   gameStarted = true;
-
+  scoreBoard = new ScoreBoard();
   setupBalls();
   createBoundaries();
   addCueBallAndStick();
@@ -435,8 +426,9 @@ function keyPressed() {
 }
 
 function resetGame() {
-  // Clear game state
-  balls.forEach(ball => World.remove(world, ball));
+  for (let i = 0; i < balls.length; i++) {
+      World.remove(world, balls[i]);
+  }
   balls = [];
   pocketedBalls = [];
   playerScores = [0, 0];
@@ -445,6 +437,7 @@ function resetGame() {
   currentPlayer = 0;
   cueBallHit = false;
   gameStarted = false;
+  scoreBoard = null; 
 }
 
 function showRules() {
@@ -469,22 +462,62 @@ function checkGameOver() {
 function switchToNextPlayer() {
   currentPlayer = (currentPlayer + 1) % 2;
   foulOccurred = false;
-  
+  scoreBoard.updateFouls(currentPlayer, playerFouls[currentPlayer]);
+  checkFoulConsequences();
   showNextPlayerMessage();
 }
 
 function showNextPlayerMessage() {
   push();
-  fill(0, 102, 255, 150);  
+  fill(0, 102, 255, 150); 
   rect(0, 0, width, height);
   textSize(60);
   fill(255);
   textAlign(CENTER, CENTER);
   text("Player " + (currentPlayer + 1) + "'s Turn", width / 2, height / 2);
   pop();
-
+  setTimeout(clearNextPlayerMessage, 2000); 
 }
-function showNextPlayerMessage() {
-  isNextPlayer = true;  
 
+function clearNextPlayerMessage() {
+  showNextPlayerFlag = false;
+}
+
+function showNextPlayerMessage() {
+  push();
+  fill(0, 102, 255, 150); 
+  rect(0, 0, width, height);
+  textSize(60);
+  fill(255);
+  textAlign(CENTER, CENTER);
+  text("Player " + (currentPlayer + 1) + "'s Turn", width / 2, height / 2);
+  pop();
+  setTimeout(clearNextPlayerMessage, 2000); 
+}
+
+class ScoreBoard {
+  constructor() {
+      this.playerScores = [0, 0];
+      this.playerFouls = [0, 0];
+  }
+
+  updateScore(playerIndex, score) {
+      this.playerScores[playerIndex] = score;
+  }
+
+  updateFouls(playerIndex, fouls) {
+      this.playerFouls[playerIndex] = fouls;
+  }
+
+  display() {
+      textSize(20);
+      fill(255);
+
+      text("Player 1(Striped) Score: " + this.playerScores[0], width - 30, 30);
+      text("Player 2(Solids) Score: " + this.playerScores[1], width - 30, 60);
+
+      fill(255, 0, 0);
+      text("Fouls - Player 1: " + this.playerFouls[0], 200, height / 2 - 30);
+      text("Fouls - Player 2: " + this.playerFouls[1], 200, height / 2);
+  }
 }
