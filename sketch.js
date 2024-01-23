@@ -33,13 +33,16 @@ let poolTableImage;
 let borderWidth = 20;
 let backgroundImage;
 let gameOver = false;
-
+let overlayMessage = "";
+let showOverlay = false;
+let overlayTimeout;
+let showRulesScreen = false;
 
 const RELATIVE_BALL_DIAMETER = 0.04; 
 const RELATIVE_BALL_RADIUS = RELATIVE_BALL_DIAMETER / 2;
 const RELATIVE_CUE_LENGTH = 0.3; 
 const RELATIVE_CUE_WIDTH = 0.005; 
-const RELATIVE_POCKET_RADIUS = 0.06; 
+const RELATIVE_POCKET_RADIUS = 0.09; 
 const RELATIVE_BORDER_WIDTH = 0.15; 
 const RELATIVE_CUE_BALL_START_X = 2 / 7.13; 
 const RELATIVE_CUE_BALL_START_Y = 0.5; 
@@ -90,16 +93,22 @@ function setup() {
 }
 
 function draw() {
+  
   if (!gameStarted) {
     
     drawStartScreen();
-    
+    if (showRulesScreen) {
+      drawRulesScreen();
+    }
   } else {
+    
     background(0, 102, 0);
     image(poolTableImage, 0, 0, width, height);
     updateCueStick();
     drawCueStick();
+    drawOverlay();
     drawPowerBar();
+    displayPlayerTypes();
     if (aimingLineVisible) {
       drawAimingLine();
     }
@@ -122,27 +131,9 @@ function draw() {
       }
     }
     wasCueStickDragging = isCueStickDragging;
-    resetCuestick()
-    if (cueBallHitCount > 1) {
-      handleFoulForCueBall();
-    }
-    if (foulOccurred) {
-      switchToNextPlayer();
-      
-    }
-
-    displayCurrentPlayer();
-    if (showNextPlayerFlag) {
-      push();
-      fill(0, 102, 255, 150); 
-      rect(0, 0, width, height);
-      textSize(60);
-      fill(255);
-      textAlign(CENTER, CENTER);
-      text("Player " + (currentPlayer + 1) + "'s Turn", width / 2, height / 2);
-      pop();
-    }
+    resetCuestick();
     scoreBoard.display();
+    drawOverlay();
   }
   
 }
@@ -191,7 +182,7 @@ function drawBall(ball) {
   textSize(10);
   textAlign(CENTER, CENTER);
   text(ball.number, ball.position.x, ball.position.y);
-   ball.isMoving = Math.abs(ball.velocity.x) > 0.1 || Math.abs(ball.velocity.y) > 0.1;
+  ball.isMoving = Math.abs(ball.velocity.x) > 0.1 || Math.abs(ball.velocity.y) > 0.1;
 }
 
 function setupBalls() {
@@ -234,7 +225,7 @@ function setupBalls() {
 }
 function createBoundaries() {
   let thickness = Math.min(windowWidth, windowHeight) * RELATIVE_BORDER_WIDTH; 
-  
+
   World.add(world, [
     // Top and bottom boundaries (split into three segments each)
     Bodies.rectangle(width / 2, 0, width, thickness, { isStatic: true, label: 'boundary' }), // Top boundary
@@ -271,7 +262,7 @@ function addMouseControl() {
 
 function drawPockets() {
   let borderWidth = 20; 
-  let pocketRadius = Math.min(windowWidth, windowHeight) * RELATIVE_POCKET_RADIUS;
+  let pocketRadius = Math.min(windowWidth, windowHeight) * RELATIVE_POCKET_RADIUS; 
 
   let pockets = [
     { x: borderWidth / 2 + 98, y: borderWidth / 2 + 70 }, // Top-left pocket
@@ -299,24 +290,18 @@ function handlePocketCollision(ball) {
     const ballType = ball.isStriped ? 'Striped' : 'Solid';
 
     if (playerTypes[currentPlayer] === null && ball.number !== '8') {
-      playerTypes[currentPlayer] = ballType;
-      playerTypes[(currentPlayer + 1) % 2] = ballType === 'Striped' ? 'Solid' : 'Striped';
+      updatePlayerTypes(ball.isStriped ? 'Striped' : 'Solid');
       updatePlayerTypeDisplay();
     } else if (ball.number !== '8' && playerTypes[currentPlayer] !== ballType) {
       // Foul occurred
       handleFoul("Wrong ball pocketed");
-      
+      switchToNextPlayer();
+    // Reset cue ball position
+      Matter.Body.setPosition(cueBall, { x: 2*width / 7.13, y: height/2 });
+      Matter.Body.setVelocity(cueBall, { x: 0, y: 0 });
       return;
     }
 
-
-    
-
-
-    pocketedBalls.push({
-      number: ball.number,
-      isStriped: ball.isStriped
-    });
 
     balls = balls.filter(b => b !== ball); 
     World.remove(world, ball); 
@@ -331,26 +316,37 @@ function handlePocketCollision(ball) {
   }
 
   if (ball.number === '8') {
-    if (playerScores[currentPlayer] < 7) {
-      alert('Player ' + (currentPlayer + 1) + ' loses. Black ball pocketed early.');
+    let allAssignedBallsCleared = checkAssignedBallsCleared(currentPlayer);
+    if (allAssignedBallsCleared) {
+      displayOverlayMessage('Player ' + (currentPlayer + 1) + ' wins!');
       gameOver = true;
       resetGame();
-      drawStartScreen();
     } else {
-      alert('Player ' + (currentPlayer + 1) + ' wins!');
+      displayOverlayMessage('Player ' + (currentPlayer + 1) + ' loses. Black ball pocketed early.');
       gameOver = true;
       resetGame();
     }
     return;
   }
+  pocketedBalls.push({
+    number: ball.number,
+    isStriped: ball.isStriped
+  });
 
   if (!foulOccurred &&! gameOver) {
     playerScores[currentPlayer]++;
-    alert(`CONGRATS Player ${currentPlayer + 1}. YOU SCORED!`);
+    displayOverlayMessage(`CONGRATS Player ${currentPlayer + 1}. YOU SCORED!`);
     scoreBoard.updateScore(currentPlayer, playerScores[currentPlayer]);
   }
 
  
+}
+
+function checkAssignedBallsCleared(playerIndex) {
+  let assignedType = playerTypes[playerIndex] === 'Striped';
+  let assignedBallsPocketed = pocketedBalls.filter(ball => ball.isStriped === assignedType).length;
+
+  return assignedBallsPocketed === 7;
 }
 
 function limitSpeed(ball) {
@@ -395,7 +391,10 @@ function displayCurrentPlayer() {
 
 function resetCuestick() {
   if (cueBallHit && !cueBall.isMoving) {
-    switchToNextPlayer()
+    switchToNextPlayer();
+    displayOverlayMessage("Player " + (currentPlayer + 1) + "'s Turn");
+    
+    
     cueBallHit = false;
     
   }
@@ -403,7 +402,8 @@ function resetCuestick() {
 
 
 function checkFoulConsequences() {
-  const foulLimit = 3; 
+
+  const foulLimit = 5; 
   if (playerFouls[currentPlayer] >= foulLimit) {
 
     alert(`Player ${currentPlayer + 1} has exceeded the foul limit and LOSES the game.`);
@@ -413,7 +413,8 @@ function checkFoulConsequences() {
   }
 
   if (foulOccurred) {
-    alert(`Foul by Player ${currentPlayer + 1}. It's now Player ${(currentPlayer + 1) % 2 + 1}'s turn.`);
+
+    displayOverlayMessage(`Foul by Player ${currentPlayer + 1}. It's now Player ${(currentPlayer + 1) % 2 + 1}'s turn.`);
   
     switchToNextPlayer();
   }
@@ -422,30 +423,24 @@ function checkFoulConsequences() {
 
 function drawStartScreen() {
   
-  background(0); // black background
-  fill('palegreen'); // pale green font color
-  textSize(40);
+  image(backgroundImage, 0, 0, width, height); // Black background
+  fill('white'); // Pale green font color
+  textSize(100);
   textAlign(CENTER, CENTER);
-  text('mustafas pool game(goofy)', width / 2, height / 4);
+  text("MUSTAFA'S POOL GAME (goofy)", width / 2, height / 4);
 
-  // Multiplayer
+  // Multiplayer Button
   fill(100, 200, 100);
   rect(width / 2 - 100, height / 2 - 25, 200, 50);
-  fill('palegreen'); 
+  fill('WHITE'); // Pale green font color for buttons
   textSize(20);
   text('Multiplayer', width / 2, height / 2);
 
-  // Singleplayer 
-  fill(100, 200, 100);
-  rect(width / 2 - 100, height / 2 + 75, 200, 50);
-  fill('white'); 
-  text('Computer(add later)', width / 2, height / 2 + 100);
-
-  // Rules
+  // Rules Button
   fill(100, 200, 200);
   rect(width / 2 - 100, height / 2 + 150, 200, 50);
-  fill('palegreen'); 
-  text('Rules', width / 2, height / 2 + 175);
+  fill('palegreen'); // Pale green font color for buttons
+  text('Rules/How to play', width / 2, height / 2 + 175);
 }
 
 function mousePressed() {
@@ -456,10 +451,10 @@ function mousePressed() {
 
     if (mouseX >= width / 2 - 100 && mouseX <= width / 2 + 100 && mouseY >= height / 2 - 25 && mouseY <= height / 2 + 25) {
       gameStarted = true;
-      setupGame();
+      setupGame(); 
     }
     if (mouseX >= width / 2 - 100 && mouseX <= width / 2 + 100 && mouseY >= height / 2 + 150 && mouseY <= height / 2 + 200) {
-      showRules();
+      showRules(); // Call a function to display the rules
     }
   }
   else{
@@ -470,7 +465,7 @@ function mousePressed() {
 function mouseReleased() {
   // Release the cue stick and apply force
   if (isCueStickDragging) {
-      cueBallHit = false; 
+      cueBallHit = false; // Reset the cueBallHit flag
       applyCueBallForce();
       isCueStickDragging = false;
       cueStickPower = 0;
@@ -496,9 +491,14 @@ function setupGame() {
 
 function keyPressed() {
   if (keyCode === ESCAPE) {
-    
-    gameStarted = false; 
-    resetGame();
+    if (showRulesScreen) {
+      // Hide the rules screen
+      showRulesScreen = false;
+    } else {
+      // Other escape key functionality
+      gameStarted = false; 
+      resetGame();
+    }
   }
   if (keyCode === CONTROL) {
     
@@ -519,7 +519,7 @@ function keyPressed() {
 }
 
 function resetGame() {
-
+ 
   balls.forEach(ball => World.remove(world, ball));
   balls = [];
   pocketedBalls = [];
@@ -533,19 +533,35 @@ function resetGame() {
   setupGame();
 }
 function showRules() {
-  alert(
-    "Mustafa's Pool Game Rules:\n\n" +
-    "1. Objective: Pocket all your assigned balls (striped or solid) and the black ball to win.\n" +
-    "2. Turns: Alternate turns; keep playing if you pocket a ball.\n" +
-    "3. Fouls:\n" +
-    "   - Hitting wrong balls.\n" +
-    "   - Cue ball hit twice in one turn.\n" +
-    "   - Cue stick hits non-cue balls.\n" +
-    "   - 5 fouls lead to automatic loss.\n" +
-    "4. Winning: Clear your balls, then pocket black ball in a called pocket.\n" +
-    "5. Losing: Pocket black ball early or accumulate 5 fouls.\n\n" +
-    "Press 'Escape' to return to the main menu. Enjoy the game!"
-  );
+  showRulesScreen = true;
+}
+
+function drawRulesScreen() {
+  push();
+  fill(0, 0, 0, 200); // Semi-transparent black background
+  rect(0, 0, width, height);
+  fill(255); // White text
+  textAlign(CENTER, CENTER);
+  textSize(32);
+  text("POOL GAME RULES / HOW TO PLAY", width / 2, height * 0.15);
+  textSize(24);
+
+  text("Objective: Pocket all your assigned balls and the 8-ball to win.", width / 2, height * 0.25);
+  
+  text("Press 'X' to increase cue power, 'Z' to decrease.", width / 2, height * 0.3);
+  text("Release mouse to shoot the cue ball.", width / 2, height * 0.35);
+  text("Wait patiently for your turn.", width / 2, height * 0.4);
+
+  text("Alternate turns; next player's turn even if you score.", width / 2, height * 0.45);
+  text("Fouls: Wrong ball pocketed, or cue ball pocketed.", width / 2, height * 0.5);
+  text("Clear your balls, then pocket the 8-ball in a pocket to win.", width / 2, height * 0.55);
+  text("Pocketing the black ball early results in a loss.", width / 2, height * 0.6);
+
+  text("Press 'ESC' to reset the game and return to the main menu.", width / 2, height * 0.65);
+  text("Press 'CTRL' to exit to the main menu.", width / 2, height * 0.7);
+
+  text("Press 'ESC' to close this window.", width / 2, height * 0.75);
+  pop();
 }
 
 function switchToNextPlayer() {
@@ -553,12 +569,13 @@ function switchToNextPlayer() {
   currentPlayer = (currentPlayer + 1) % 2;
   foulOccurred = false;
   scoreBoard.updateFouls(currentPlayer, playerFouls[currentPlayer]);
-  checkFoulConsequences(); 
-  showNextPlayerMessage();
+  checkFoulConsequences();
 
 }
 
 function showNextPlayerMessage() {
+  showNextPlayerFlag = true; 
+  setTimeout(() => { showNextPlayerFlag = false; }, 1000); 
   push();
   fill(0, 102, 255, 150);  
   rect(0, 0, width, height);
@@ -569,18 +586,14 @@ function showNextPlayerMessage() {
   pop();
   setTimeout(() => clearNextPlayerMessage(), 1000);  
 }
-function showNextPlayerMessage() {
-  showNextPlayerFlag = true;
-  setTimeout(() => { showNextPlayerFlag = false; }, 1000);
- 
-}
+
 
 class ScoreBoard {
   constructor() {
     this.playerScores = [0, 0];
     this.playerFouls = [0, 0];
     this.boardWidth = 600; 
-    this.boardHeight = 60; 
+    this.boardHeight = 40; 
     this.boardX = width - this.boardWidth - 170; 
     this.boardY = 10; // Position Y
   }
@@ -597,8 +610,8 @@ class ScoreBoard {
     push();
     fill(255, 255, 255, 100); 
     noStroke();
-    rect(this.boardX, this.boardY, this.boardWidth, this.boardHeight, 80);
-    rect(170,this.boardY,this.boardWidth, this.boardHeight,80) 
+    rect(this.boardX, this.boardY+15, this.boardWidth, this.boardHeight, 80);
+    rect(170,this.boardY+15,this.boardWidth, this.boardHeight,80);
     fill(0);
     textSize(30);
     textAlign(LEFT, TOP);
@@ -607,10 +620,10 @@ class ScoreBoard {
     text(`Score: ${this.playerScores[0]}`, 500, this.boardY + 20);
     
     text(`Score: ${this.playerScores[1]}`, this.boardX + 390, this.boardY + 20);
-    text(`  Player 2            Fouls: ${this.playerFouls[1]}`, this.boardX + 30, this.boardY + 20);
+    text(`  Player 2     Fouls: ${this.playerFouls[1]}`, this.boardX + 30, this.boardY + 20);
     fill(255, 0, 0); 
     
-    
+    displayPlayerTypes();
     pop();
   }
 }
@@ -634,20 +647,6 @@ function drawAimingLine() {
   }
 }
 
-function handleFoulForCueBall() {
-
-  playerFouls[currentPlayer]++;
-  alert("Foul: Player " + (currentPlayer + 1) + " hit the cue ball twice!");
-  Matter.Body.setVelocity(cueBall, { x: 0, y: 0 });
-  Matter.Body.setPosition(cueBall, { x: 2*width / 7.13, y: height/2 });
-
-  foulOccurred=true;
-  
-  
-  checkFoulConsequences();
-  
-}
-
 
 function drawPowerBar() {
   let powerBarWidth = 40;
@@ -663,8 +662,57 @@ function drawPowerBar() {
 }
 
 function handleFoul(reason) {
-  alert(`Foul by Player ${currentPlayer + 1}: ${reason}`);
-  foulOccurred = true;
   playerFouls[currentPlayer]++;
+  displayOverlayMessage("Foul by Player " + (currentPlayer + 1) + ": " + reason);
   switchToNextPlayer();
+}
+
+function displayPlayerTypes() {
+  fill(255); 
+  textSize(20);
+  textAlign(CENTER, CENTER);
+  
+  if (playerTypes[0] !== null) {
+    text( (playerTypes[0] === 'Striped' ? 'Stripes' : 'Solids'), 300, 15);
+  } else {
+    text(" Not yet determined", 300, 15);
+  }
+  
+  if (playerTypes[1] !== null) {
+    text((playerTypes[1] === 'Striped' ? 'Stripes' : 'Solids'), width - 300, 15);
+  } else {
+    text("Not yet determined", width - 300, 15);
+  }
+}
+
+function updatePlayerTypes(ballType) {
+  if (currentPlayer === 0) {
+    playerTypes[0] = ballType;
+    playerTypes[1] = ballType === 'Striped' ? 'Solid' : 'Striped';
+  } else {
+    playerTypes[1] = ballType;
+    playerTypes[0] = ballType === 'Striped' ? 'Solid' : 'Striped';
+  }
+}
+
+function displayOverlayMessage(msg) {
+  overlayMessage = msg;
+  showOverlay = true;
+  clearTimeout(overlayTimeout);
+  overlayTimeout = setTimeout(() => {
+    showOverlay = false;
+  }, 2000);
+}
+
+function drawOverlay() {
+  if (showOverlay) {
+    push();
+    fill(0, 102, 255, 150);  
+    rect(0, 0, width, height);
+    fill(255);
+    textSize(60);
+    textAlign(CENTER, CENTER);
+    text(overlayMessage, width / 2, height / 2);
+    pop();
+  }
 }
