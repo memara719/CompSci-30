@@ -349,6 +349,9 @@ function checkAssignedBallsCleared(playerIndex) {
   return assignedBallsPocketed === 7;
 }
 
+function updatePlayerTypeDisplay() {
+}
+
 function limitSpeed(ball) {
   const maxSpeed = Math.min(windowWidth, windowHeight) * RELATIVE_MAX_SPEED;
   const speed = Math.sqrt(ball.velocity.x ** 2 + ball.velocity.y ** 2);
@@ -690,7 +693,7 @@ function updatePlayerTypes(ballType) {
     playerTypes[0] = ballType;
     playerTypes[1] = ballType === 'Striped' ? 'Solid' : 'Striped';
   } else {
-    playerTypes[1] = ballType;
+    playerTypes[1] = ballType; 
     playerTypes[0] = ballType === 'Striped' ? 'Solid' : 'Striped';
   }
 }
