@@ -536,12 +536,11 @@ function mousePressed() {
     if (mouseX >= width / 2 - 100 && mouseX <= width / 2 + 100 && mouseY >= height / 2 - 25 && mouseY <= height / 2 + 25) {
       gameStarted = true; 
       setupGame(); 
-
+    }
     if (mouseX >= width / 2 - 100 && mouseX <= width / 2 + 100 && mouseY >= height / 2 + 150 && mouseY <= height / 2 + 200) {
       showRules(); 
     }
   }
-}
   else {
     isCueStickDragging = true; // Other wise the cuestick is being dragged
   }
