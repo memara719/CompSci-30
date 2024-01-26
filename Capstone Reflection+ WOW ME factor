@@ -1,0 +1,32 @@
+
+Reflection:
+Advice for Starting a Similar Project:
+
+1. Break it down: In hindsight, It was really helpful to have started by breaking down the project into smaller parts. For instance, one part is for handling ball movements, another for cue stick mechanics, and so on. It's this that makes 
+the game very easy to debug, as you know where everything is, and if there is anything redundant or not working, you can fix it easily. Someone could even be reading your code for the first time and have a very good understanding of where the problem is just because
+you broke things down into smaller pieces. Of course, don't overdo this.
+
+2. Know your tools: I needed to have a solid understanding of p5.js and Matter.js right from the beginning. This knowledge is crucial for efficiently implementing game mechanics. Before I even started coding, I went through most of the CodingJS drills, and 
+followed along many of the coding trains videos, specifically Matter.js related videos. I would definitely recommend doing this as a starting point.
+
+3. Keep it organized: Organizing my code properly from the start made it easier to manage, understand, and debug later on.
+
+
+Completion of the “Needs to Have” List:
+
+I managed to implement the core mechanics, such as ball movement, collision and everything. However, some desired features like AI opponents and online multiplayer were not completed.
+
+Hardest Part of the Project:
+
+Integrating the physics engine with the player interaction was not as hard as I thought it would be compared to game logic, in fact, it just needs to be setup initially and then everything works. Game logic bugs on the other hand turn out
+to be a nightmare.
+Perfecting the cue stick's movement and its interaction with the cue ball was also quite difficult, I went through different phases of cue sticks since I didn't have a solid idea of what I wanted my cuestick to look like.
+
+Unsolved Problems:
+
+I couldn't add advanced ball physics like spin effects, which would have made the game more realistic.
+In the future, I plan on learning about machine learning and neural networks, which should advance my ability to make an AI for the game
+Achieving consistent appearance across various devices remained a challenge, I was unable to fix the aspect ratio for different screen sizes.
+
+
+
