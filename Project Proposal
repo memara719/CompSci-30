@@ -2,10 +2,10 @@ Project Proposal for Pool Game
 
 
 Premise:
-The project I’m proposings to develop is a 8 ball pool game. I want to make this project not only because it will be entertaining(at least somewhat). But because I will learn from it a ton and I am very 
+The project I’m proposing to develop is an 8-ball pool game. I want to make this project not only because it will be entertaining(at least somewhat). But because I will learn from it a ton I am very 
 interested in applying physics to computer science. The core of this project will be to be able to utilize the Matter.js library and being able to create functional game logic. Although I have thought of 
-making my own, it’s less realistic and impractical. Therefore in order to complete this project, I will need to learn more about the Matter.js library, and that will be through youtube videos and coding 
-challenges that Daniel Shiffman does on his youtube channel The Coding Train. I will also need to review many concepts in Javascript, and this will be done through  many Coding JS problems. 
+making my own, it’s less realistic and impractical. Therefore to complete this project, I will need to learn more about the Matter.js library, and that will be through YouTube videos and coding 
+challenges that Daniel Shiffman does on his YouTube channel The Coding Train. I will also need to review many concepts in Javascript, and this will be done through  many Coding JS problems. 
 The primary focus of this game will be on creating game logic, as previously mentioned, and a user-friendly interface, incorporating realistic physics, with a smooth gameplay experience. As part of the 
 project, I will be exploring new skills such as being able to use libraries and learn how to use them, and possibly, connecting to servers if the time permits so that there could be online multiplayer. 
 
@@ -35,9 +35,9 @@ Initial setup of project structure and basic UI design.
 
 Stage 2: Core Gameplay Development (4 Days)
 Integrating physics engine for ball movements.
-Implementing scoring system and basic multiplayer functionalities.
+Implementing a scoring system and basic multiplayer functionalities.
 
-Stage 3: AI Development and Sound Integration (4 Days)
+Stage 3: Game Logic and Background music(4 Days)
 Developing basic game logic
 Adding background music.
 
