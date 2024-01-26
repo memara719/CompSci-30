@@ -1,0 +1,56 @@
+Project Proposal for Pool Game
+
+
+Premise:
+The project I’m proposings to develop is a 8 ball pool game. I want to make this project not only because it will be entertaining(at least somewhat). But because I will learn from it a ton and I am very 
+interested in applying physics to computer science. The core of this project will be to be able to utilize the Matter.js library and being able to create functional game logic. Although I have thought of 
+making my own, it’s less realistic and impractical. Therefore in order to complete this project, I will need to learn more about the Matter.js library, and that will be through youtube videos and coding 
+challenges that Daniel Shiffman does on his youtube channel The Coding Train. I will also need to review many concepts in Javascript, and this will be done through  many Coding JS problems. 
+The primary focus of this game will be on creating game logic, as previously mentioned, and a user-friendly interface, incorporating realistic physics, with a smooth gameplay experience. As part of the 
+project, I will be exploring new skills such as being able to use libraries and learn how to use them, and possibly, connecting to servers if the time permits so that there could be online multiplayer. 
+
+Features List:
+
+Required Features (Must-Haves):
+Realistic Ball Physics: Implementing physics for ball movement and collision.
+Scoring System: Tracking and displaying scores.
+Multiplayer Support: Allowing two players to play on the same device.
+Easy to use UI: Players won’t have a hard time being able to play the game
+Functioning game logic: The game works fairly, according to the rules
+
+
+Desired Features (Nice-to-Haves):
+Customization: Allowing players to customize the table and cue designs.
+Basic AI for Single Player: A simple AI opponent for solo play.
+Servers: Multiplayer online
+Leaderboard: To track who has the most wins online
+
+
+Milestone Timeline:
+
+
+Stage 1: Learning and Setup (4 Days)
+Learning Matter.js.
+Initial setup of project structure and basic UI design.
+
+Stage 2: Core Gameplay Development (4 Days)
+Integrating physics engine for ball movements.
+Implementing scoring system and basic multiplayer functionalities.
+
+Stage 3: AI Development and Sound Integration (4 Days)
+Developing basic game logic
+Adding background music.
+
+Stage 4: UI Enhancement and Testing (4 Days)
+Refining the user interface for better user experience.
+Initial testing and bug fixing.
+
+Stage 5: Advanced Features and Additional Testing (5 Days)
+Implementing desired features (if time permits).
+Comprehensive testing and refinements.
+
+Stage 6: Final Touches (5 Days)
+Finalizing game features and conducting thorough testing.
+ Project Submission
+
+Solo Project
